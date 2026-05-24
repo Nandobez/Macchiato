@@ -17,7 +17,8 @@ resources.
 
 Pair with **[Xpresso](https://github.com/Nandobez/Xpresso)** for the
 backend (Rails-style scaffolder) and **[jdp](https://github.com/Nandobez/jdp)**
-for dependency hygiene.
+for dependency hygiene. Or use **[Ristretto](https://github.com/Nandobez/Ristretto)**
+as the umbrella CLI for all three.
 
 ## Install
 
@@ -25,8 +26,7 @@ for dependency hygiene.
 curl -fsSL https://raw.githubusercontent.com/Nandobez/Macchiato/main/install.sh | bash
 ```
 
-Prerequisites: **JDK 17+**, **mvn**, **git**, **Node 18+** (only when
-running codegen + vite build).
+Prerequisites: **JDK 17+**, **mvn**, **git**, **Node 18+**.
 
 ## 90-second tour
 
@@ -36,42 +36,57 @@ cd tasks-app
 xpresso g resource Task title:string done:bool             # 2) JPA CRUD
                                                            # 3) write a @Page in Java
 macc new src/main/frontend                                 # 4) scaffold Vite + Tailwind
-macc install                                               # 5) Java → TSX + vite build
-mvn spring-boot:run                                        # 6) one server, frontend included
+macc add button card dialog                                # 5) pull shadcn components
+macc install                                               # 6) Java → TSX + vite build
+mvn spring-boot:run                                        # 7) one server, frontend included
 ```
 
-Or run both backend + frontend in dev mode together:
+Or with watch + dev parallel:
 
 ```bash
-macc serve   # backend on :8080, vite on :5173 with /api proxy
+macc watch &       # re-codegen on every .java change
+macc serve         # backend :8080 + vite :5173 with /api proxy
+```
+
+## Commands
+
+```
+PROJECT
+  new <dir>             scaffold Vite + React + Tailwind into <dir>
+  install               full build (mvn compile + codegen + npm install + vite build)
+  dev                   vite hot reload (frontend only)
+  serve                 backend (xpresso s) + vite dev together · /api proxy
+  watch                 file watcher · re-runs codegen on every .java change
+
+GENERATE
+  g page <Name>         @Page class with @Fetch / @State / @Action
+  g component <Name>    custom Java component (reusable across pages)
+  g template <Name>     alias of `g component` — name it however you think of it
+  g model <Name>        @Model record (shared with the backend, mirrored as TS interface)
+  codegen               scan @Page/@Model on the classpath → emit .tsx + types + routes
+
+UI LIBRARY
+  add <comp>…           import shadcn-style components + generate Java wrappers
+                        ex: macc add button card dialog audio-player
+
+INTEGRATIONS
+  doctor [--fix]        delegate to jdp doctor (CVE + outdated + score)
+  deps                  delegate to jdp list
 ```
 
 ## A @Page in Java
 
 ```java
-package io.demo.tasksapp.ui;
-
-import dev.nandobez.macc.dsl.*;
-import dev.nandobez.macc.dsl.annotations.*;
-import static dev.nandobez.macc.dsl.Tags.*;
-import static dev.nandobez.macc.dsl.Helpers.*;
-
-import java.util.List;
-
 @Page("/")
 public class TasksPage extends Component {
 
     @Fetch(url = "/api/tasks", empty = "No tasks yet")
     Var<List<TaskModel>> tasks;
 
-    @Action(method = "POST", url = "/api/tasks")
-    void createTask() {}
-
-    @Action(method = "PUT", url = "/api/tasks/{id}", body = "{ ...t, done: !t.done }")
-    void toggle(TaskModel t) {}
-
-    @Action(method = "DELETE", url = "/api/tasks/{id}")
-    void remove(Long id) {}
+    @Action(method = "POST", url = "/api/tasks")            void createTask() {}
+    @Action(method = "PUT",  url = "/api/tasks/{id}",
+            body = "{ ...t, done: !t.done }")               void toggle(TaskModel t) {}
+    @Action(method = "DELETE", url = "/api/tasks/{id}")     void remove(Long id) {}
 
     @Override
     public Element render() {
@@ -102,29 +117,67 @@ public class TasksPage extends Component {
 `useEffect`, `fetch`, and the three action handlers — no TypeScript
 written by hand.
 
-## Commands
+## UI components (shadcn-style)
 
-```
-PROJECT
-  new <dir>            scaffold Vite + React + Tailwind into <dir>
-  g page <Name>        generate a @Page class
-  g component <Name>   generate a @Component class
-  g model <Name>       generate a @Model record
-
-CODEGEN
-  codegen              scan @Page/@Model on the classpath → emit .tsx + types + routes
-  install              mvn compile + codegen + npm install + vite build (one shot)
-
-LIFECYCLE
-  dev                  codegen + vite dev server (hot reload)
-  serve                backend (xpresso s) + vite dev together · /api proxy
-
-INTEGRATION
-  doctor               delegate to jdp doctor (CVE + outdated + score)
-  deps                 delegate to jdp list
+```bash
+macc add button card dialog
 ```
 
-## DSL surface
+This:
+
+1. Downloads each component's TSX into `src/main/frontend/src/components/ui/`
+   (using shadcn's own CLI — initializes `components.json` automatically the first time).
+2. Scans the TSX for exports.
+3. Writes a **Java wrapper** at `src/main/java/<base>/ui/external/<Pascal>.java`:
+
+```java
+public final class Button {
+    private static final String SRC = "@/components/ui/button";
+    public static final ExternalComponent button     = External.from(SRC, "Button");
+    public static final ExternalComponent buttonVariants = External.from(SRC, "buttonVariants");
+}
+```
+
+Use it from a @Page just like any tag:
+
+```java
+import com.acme.ui.external.Button;
+
+div().children(
+    Button.button.className("bg-blue-500").children(span("Save"))
+)
+```
+
+The TSX file is **yours** — edit colors, layout, behavior. The Java
+wrapper only describes the public surface (what you can call from Java).
+Re-run `macc add <comp>` to update the wrapper if exports change.
+
+## Templates (your own reusable DSL components)
+
+`macc g template UserCard` scaffolds:
+
+```java
+@Component
+public class UserCard extends Component {
+    @Prop String name;
+    @Prop String email;
+    @Prop @Slot Element actions;
+
+    @Override
+    public Element render() {
+        return div().className("rounded shadow p-4").children(
+            h2(name),
+            p(email).className("text-gray-500"),
+            div().className("flex gap-2 mt-2").children(actions)
+        );
+    }
+}
+```
+
+Reuse anywhere by calling `render(UserCard.class)` or composing
+directly in another `@Page`.
+
+## DSL primitives
 
 | Java | Emits |
 |---|---|
@@ -140,23 +193,25 @@ INTEGRATION
 | `@State int count` | `useState<number>(0)` |
 | `@Fetch(url, empty)` | `useState + useEffect + fetch` + auto Spinner/Error/Empty |
 | `@Action(method, url, body)` | TS handler function with `fetch` |
+| `External.from(pkg, name)` | `import { name } from "pkg"` + `<name />` |
 
 ## How it works
 
 ```
 src/main/java/.../ui/*.java        ◄── you write
+src/main/frontend/components/ui/   ◄── shadcn TSX (yours to edit)
         │
         │  macc codegen
         ▼
 src/main/frontend/
-  ├── pages/*.tsx                   ◄── generated
-  ├── types/*.ts                    ◄── generated
-  ├── components/StateViews.tsx     ◄── generated
-  └── routes.tsx                    ◄── generated
+  ├── pages/*.tsx                   ◄── generated from @Page
+  ├── types/*.ts                    ◄── generated from @Model
+  ├── components/StateViews.tsx     ◄── generated (Spinner/Error/Empty)
+  └── routes.tsx                    ◄── generated route table
         │
         │  vite build
         ▼
-src/main/resources/static/         ◄── bundled by macc install
+src/main/resources/static/         ◄── bundled by `macc install`
         │
         │  mvn spring-boot:run
         ▼
