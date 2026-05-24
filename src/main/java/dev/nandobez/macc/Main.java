@@ -12,8 +12,8 @@ import static dev.nandobez.macc.cmd.Tui.*;
     version = "macc 0.1.0",
     description = "Macc — write React in Java. DSL + codegen.",
     subcommands = { NewCmd.class, GenerateCmd.class, CodegenCmd.class,
-        InstallCmd.class, DevCmd.class, ServeCmd.class,
-        DoctorCmd.class, DepsCmd.class }
+        InstallCmd.class, DevCmd.class, ServeCmd.class, WatchCmd.class,
+        UiAddCmd.class, DoctorCmd.class, DepsCmd.class }
 )
 public class Main implements Runnable {
 
@@ -31,18 +31,31 @@ public class Main implements Runnable {
         System.out.println();
         System.out.println(BLD + "macc " + R + DIM + "0.1.0" + R + " — write React in Java");
         System.out.println();
-        System.out.println("  " + DIM + "USAGE" + R);
+        System.out.println("  " + DIM + "PROJECT" + R);
         System.out.println();
-        System.out.println("    macc new <frontend-dir>          scaffold Vite + React + Tailwind");
-        System.out.println("    macc g page <Name>               generate a @Page class");
-        System.out.println("    macc g component <Name>          generate a @Component class");
-        System.out.println("    macc g model <Name>              generate a @Model record");
-        System.out.println("    macc codegen                     scan + emit .tsx + types + routes");
-        System.out.println("    macc install                     mvn compile + codegen + npm install + vite build");
-        System.out.println("    macc dev                         codegen + vite dev server (hot reload)");
-        System.out.println("    macc serve                       backend (xpresso s) + frontend (vite) together");
-        System.out.println("    macc doctor                      delegate to " + DIM + "jdp doctor" + R);
-        System.out.println("    macc deps                        delegate to " + DIM + "jdp list" + R);
+        System.out.println("    macc " + BLD + "new <dir>" + R + "                  scaffold Vite + React + Tailwind");
+        System.out.println("    macc " + BLD + "install" + R + "                     full build (compile + codegen + npm + vite build)");
+        System.out.println("    macc " + BLD + "dev" + R + "                         vite hot reload");
+        System.out.println("    macc " + BLD + "serve" + R + "                       xpresso s + vite together");
+        System.out.println("    macc " + BLD + "watch" + R + "                       file-watcher · re-codegen on .java change");
+        System.out.println();
+        System.out.println("  " + DIM + "GENERATE" + R);
+        System.out.println();
+        System.out.println("    macc " + BLD + "g page <Name>" + R + "               @Page class with @Fetch/@State/@Action");
+        System.out.println("    macc " + BLD + "g component <Name>" + R + "          custom Java component (reusable)");
+        System.out.println("    macc " + BLD + "g template <Name>" + R + "           alias of g component — your own DSL template");
+        System.out.println("    macc " + BLD + "g model <Name>" + R + "              @Model record (shared with backend)");
+        System.out.println("    macc " + BLD + "codegen" + R + "                     scan + emit .tsx + types + routes");
+        System.out.println();
+        System.out.println("  " + DIM + "UI LIBRARY" + R);
+        System.out.println();
+        System.out.println("    macc " + BLD + "add <comp>…" + R + "                 download shadcn-style components + generate Java wrappers");
+        System.out.println("                                 ex: " + DIM + "macc add button card dialog" + R);
+        System.out.println();
+        System.out.println("  " + DIM + "INTEGRATIONS" + R);
+        System.out.println();
+        System.out.println("    macc " + BLD + "doctor [--fix]" + R + "             delegate to " + DIM + "jdp doctor" + R);
+        System.out.println("    macc " + BLD + "deps" + R + "                       delegate to " + DIM + "jdp list" + R);
         System.out.println();
     }
 }

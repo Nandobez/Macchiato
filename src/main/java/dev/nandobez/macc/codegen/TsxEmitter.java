@@ -21,7 +21,25 @@ public class TsxEmitter {
         else if (e instanceof EachNode n) writeEach(n);
         else if (e instanceof PickNode p) writePick(p);
         else if (e instanceof ComponentRef c) writeComponent(c);
+        else if (e instanceof ExternalComponent ec) writeExternal(ec);
         else                              out.append("/* ? ").append(e.getClass().getSimpleName()).append(" */");
+    }
+
+    /** Imports collected from external components, keyed by import path → set of named exports. */
+    public final java.util.Map<String, java.util.Set<String>> externalImports = new java.util.LinkedHashMap<>();
+
+    private void writeExternal(ExternalComponent c) {
+        externalImports.computeIfAbsent(c.importPath, k -> new java.util.LinkedHashSet<>()).add(c.exportName);
+        indent();
+        out.append("<").append(c.exportName);
+        for (var e : c.props.entrySet()) attrInline(e.getKey(), e.getValue());
+        if (c.children.isEmpty()) { out.append(" />"); return; }
+        out.append(">\n");
+        indent++;
+        for (var k : c.children) { write(k); out.append("\n"); }
+        indent--;
+        indent();
+        out.append("</").append(c.exportName).append(">");
     }
 
     private void writeTag(Tag t) {
