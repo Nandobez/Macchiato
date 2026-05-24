@@ -27,10 +27,10 @@ public class GenerateCmd implements Callable<Integer> {
         Path srcRoot = Path.of("src/main/java/" + pkg.replace('.', '/'));
         Files.createDirectories(srcRoot);
         String file = switch (kind.toLowerCase()) {
-            case "page"      -> pageTemplate(pkg, name, routePath == null ? "/" + name.toLowerCase() : routePath);
-            case "component" -> componentTemplate(pkg, name);
-            case "model"     -> modelTemplate(pkg, name);
-            default -> { error("unknown kind: " + kind); yield null; }
+            case "page"               -> pageTemplate(pkg, name, routePath == null ? "/" + name.toLowerCase() : routePath);
+            case "component", "template" -> componentTemplate(pkg, name);
+            case "model"              -> modelTemplate(pkg, name);
+            default -> { error("unknown kind: " + kind + " (page | component | template | model)"); yield null; }
         };
         if (file == null) return 2;
         Path out = srcRoot.resolve(name + ".java");
